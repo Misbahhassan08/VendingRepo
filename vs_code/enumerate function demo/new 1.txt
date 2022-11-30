@@ -1,0 +1,14 @@
+{
+    "cards":[
+        "card1",
+        "card2",
+        "card3",
+        "card4"
+    ],
+    "shadow":[{
+        "color":"#000",
+        "blurRadius":20,
+        "xoffset":0,
+        "yoffset":0
+    }]
+}
