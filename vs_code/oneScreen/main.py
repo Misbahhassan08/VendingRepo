@@ -8,48 +8,42 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setupUi(self)
-        self.init_properties()
-        self.pushButton.clicked.connect(self.screens_update)
+        self.stream_thread = Stream_thread()
+        self.set_screen_btn.clicked.connect(self.screens_update)
+        self.close_button.clicked.connect(self.close)
         self.select_screens = None
-
-    def init_properties(self):
-        self.stream_thread = Stream_thread()  
-        
+       
     def screens_update(self):
         self.select_screens = self.comboBox.currentText()
         if self.select_screens == "You want to play video":
            self.stream_thread.video_Start()
-           self.stream_thread.change_pixmap1.connect(self.screen_1.setPixmap)
+           self.stream_thread.change_pixmap.connect(self.screen_1.setPixmap)
            self.label.setText("Status : You are playing video")
         elif self.select_screens == "You want to play camera":
              self.stream_thread.camera_Start()
-             self.stream_thread.change_pixmap2.connect(self.screen_1.setPixmap)
+             self.stream_thread.change_pixmap.connect(self.screen_1.setPixmap)
              self.label.setText("Status : You are playing camera")
              
-        self.run_video_streaming()
-
-    @QtCore.pyqtSlot(bool)
-    def run_video_streaming(self):
         self.stream_thread.start()
-    def stop_video_streaming(self):
-        self.stream_thread.stop()
 
 class Stream_thread(QtCore.QThread):
-    change_pixmap1 = QtCore.pyqtSignal(QtGui.QPixmap)
-    change_pixmap2 = QtCore.pyqtSignal(QtGui.QPixmap)
+    change_pixmap = QtCore.pyqtSignal(QtGui.QPixmap)
+    def __init__(self):
+        QtCore.QThread.__init__(self)
+        self.video_active = None
+        self.camera_active = None
+        self.frame_counter = 0
+        self.thread_is_active = True 
+        pass   # end of __init__ constructer
     def run(self):
         cap1 = cv2.VideoCapture('Videos\VID-20221007-WA0001.mp4')
-        cap2 = cv2.VideoCapture(0)
-        frame_counter = 0
-        self.thread_is_active = True
-        self.video_active = False
-        self.camera_active = False
+        cap2 = cv2.VideoCapture(0)       
         while self.thread_is_active:
             if self.video_active:
-               frame_counter += 1
+               self.frame_counter += 1
                ret, frame = cap1.read()
-               if frame_counter == cap1.get(cv2.CAP_PROP_FRAME_COUNT):
-                  frame_counter = 0 #Or whatever as long as it is the same as next line
+               if self.frame_counter == cap1.get(cv2.CAP_PROP_FRAME_COUNT):
+                  self.frame_counter = 0 #Or whatever as long as it is the same as next line
                   cap1.set(cv2.CAP_PROP_POS_FRAMES, 0)
                if ret:
                     width = 1800
@@ -60,7 +54,7 @@ class Stream_thread(QtCore.QThread):
                     flipped_image = cv2.flip(image, 1)
                     qt_image = QtGui.QImage(flipped_image.data, flipped_image.shape[1], flipped_image.shape[0], QtGui.QImage.Format_RGB888)
                     pixmap = QtGui.QPixmap.fromImage(qt_image)
-                    self.change_pixmap1.emit(pixmap)
+                    self.change_pixmap.emit(pixmap)
             if self.camera_active:
                 ret, frame = cap2.read()              
                 if ret:
@@ -72,7 +66,7 @@ class Stream_thread(QtCore.QThread):
                     flipped_image = cv2.flip(image, 1)
                     qt_image = QtGui.QImage(flipped_image.data, flipped_image.shape[1], flipped_image.shape[0], QtGui.QImage.Format_RGB888)
                     pixmap = QtGui.QPixmap.fromImage(qt_image)
-                    self.change_pixmap2.emit(pixmap)
+                    self.change_pixmap.emit(pixmap)
     def stop(self):
         self.thread_is_active = False
         self.quit()
@@ -88,7 +82,7 @@ class Stream_thread(QtCore.QThread):
 def main():
     app = QtWidgets.QApplication(sys.argv)
     controller = MainWindow()
-    controller.show()
+    controller.showFullScreen()
     sys.exit(app.exec_())
     pass  # end of main()
 if __name__ == "__main__":
